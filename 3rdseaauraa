@@ -1,0 +1,176 @@
+-- Master of Auras Third Sea Mobile Touch Panel & Auto-Hopper
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+if getgenv().AuraPanelExecuted == nil then
+    getgenv().AuraPanelExecuted = true
+end
+
+local locations = {
+    ["Castle on Sea (Stairs)"] = Vector3.new(-4955, 14, -5334),
+    ["Port Town (Pistol Mobs)"] = Vector3.new(-5372, 51, -213),
+    ["Hydra Island (Temple Roof)"] = Vector3.new(5740, 1011, -263),
+    ["Great Tree (Root Base)"] = Vector3.new(4132, 10, -3212),
+    ["Turtle (Mountain Top)"] = Vector3.new(-10521, 514, -10041),
+    ["Turtle (Mountain Foot)"] = Vector3.new(-10603, 5, -10155),
+    ["Turtle (Arches Entrance)"] = Vector3.new(-12461, 230, -9615)
+}
+
+if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("MobileAuraPanel") then
+    LocalPlayer.PlayerGui.MobileAuraPanel:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MobileAuraPanel"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer.PlayerGui
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "Toggle"
+toggleBtn.Size = UDim2.new(0, 95, 0, 70)
+toggleBtn.Position = UDim2.new(0.02, 0, 0.35, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Text = "3rd sea aura"
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 14
+toggleBtn.Parent = screenGui
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(1, 0)
+btnCorner.Parent = toggleBtn
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Main"
+mainFrame.Size = UDim2.new(0, 240, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -120, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = mainFrame
+
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(1, 0, 0, 40)
+titleText.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+titleText.Text = "Third Sea Aura Sniper"
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.Font = Enum.Font.SourceSansBold
+titleText.TextSize = 16
+titleText.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleText
+
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -20, 1, -55)
+scrollFrame.Position = UDim2.new(0, 10, 0, 45)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 380)
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = scrollFrame
+
+local currentTween = nil
+local function smoothFlyTo(targetPos)
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart")
+    if currentTween then currentTween:Cancel() end
+    local distance = (root.Position - targetPos).Magnitude
+    local speed = 150
+    local duration = distance / speed
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+end
+
+local function checkServerAndHop()
+    local npcNames = {"Master of Auras", "Barista Cousin"}
+    local found = false
+    for _, name in pairs(npcNames) do
+        if workspace:FindFirstChild(name) or (workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild(name)) then
+            found = true
+            break
+        end
+    end
+    if found then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "NPC IS ACTIVE!",
+            Text = "Tap locations to fly to them!",
+            Duration = 10
+        })
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Scanning Area...",
+            Text = "No NPC found. Hopping servers...",
+            Duration = 3
+        })
+        task.wait(1)
+        local sfUrl = "https://roblox.com" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local req = syn and syn.request or http_request or request or http.request
+        if req then
+            local res = req({Url = sfUrl, Method = "GET"})
+            local data = HttpService:JSONDecode(res.Body)
+            if data and data.data then
+                for _, v in pairs(data.data) do
+                    if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LocalPlayer)
+                        return
+                    end
+                end
+            end
+        end
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end
+end
+
+local scanBtn = Instance.new("TextButton")
+scanBtn.Size = UDim2.new(1, 0, 0, 42)
+scanBtn.BackgroundColor3 = Color3.fromRGB(190, 55, 55)
+scanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+scanBtn.Text = "🔍 SCAN & AUTO-HOP"
+scanBtn.Font = Enum.Font.SourceSansBold
+scanBtn.TextSize = 14
+scanBtn.LayoutOrder = 0
+scanBtn.Parent = scrollFrame
+
+local scanCorner = Instance.new("UICorner")
+scanCorner.CornerRadius = UDim.new(0, 6)
+scanCorner.Parent = scanBtn
+scanBtn.MouseButton1Click:Connect(checkServerAndHop)
+
+local order = 1
+for name, vector in pairs(locations) do
+    local flyBtn = Instance.new("TextButton")
+    flyBtn.Size = UDim2.new(1, 0, 0, 38)
+    flyBtn.BackgroundColor3 = Color3.fromRGB(48, 48, 62)
+    flyBtn.TextColor3 = Color3.fromRGB(235, 235, 235)
+    flyBtn.Text = "Fly: " .. name
+    flyBtn.Font = Enum.Font.SourceSans
+    flyBtn.TextSize = 14
+    flyBtn.LayoutOrder = order
+    flyBtn.Parent = scrollFrame
+    local flyCorner = Instance.new("UICorner")
+    flyCorner.CornerRadius = UDim.new(0, 6)
+    flyCorner.Parent = flyBtn
+    flyBtn.MouseButton1Click:Connect(function()
+        smoothFlyTo(vector)
+    end)
+    order = order + 1
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
